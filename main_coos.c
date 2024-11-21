@@ -29,11 +29,13 @@ const float ADC_MAX = 4095.0;		// max ADC value
 const int ADC_SAMPLES = 1024;		// ADC read samples
 const int REF_RESISTANCE = 3500;
 
-float temp, lux, umid = 0;
+float temp, lux, humid = 0;
+
+struct dht_s dht_11;
 
 #define SENSOR_TEMP		"testtopic/andrelucas/sensor_temp"
 #define SENSOR_LUMI		"testtopic/andrelucas/sensor_lumi"
-#define SENSOR_UMID		"testtopic/andrelucas/sensor_umid"
+#define SENSOR_HUMID	"testtopic/andrelucas/sensor_umid"
 #define CONTROLE_DIME	"testtopic/andrelucas/controle_dime"
 #define RELAY_1			"testtopic/andrelucas/relay_1"
 #define RELAY_2			"testtopic/andrelucas/relay_2"
@@ -70,10 +72,17 @@ int32_t app_udp_handler(uint8_t *packet)
 
 			/* toggle RELAY_1 */
 			if (val){
-				GPIO_ToggleBits(GPIOC, GPIO_Pin_13); // CHANGE TO RELAY_1 PIN
+				if (TEMP_MIN != -1 && TEMP_MAX != -1){
+					if (temp >= TEMP_MIN && temp <= TEMP_MAX){
+						GPIO_ToggleBits(GPIOA, GPIO_Pin_0); // PA0
+					}
+					else {
+						GPIO_ResetBits(GPIOA, GPIO_Pin_0);  // PA0
+					}
+				}
 			}
-			else {
-				GPIO_ResetBits(GPIOC, GPIO_Pin_13); // CHANGE TO RELAY_1 PIN
+			else{
+				GPIO_ResetBits(GPIOA, GPIO_Pin_0);			// PA0
 			}
 		}
 		if (strstr(datain, RELAY_2)){
@@ -88,11 +97,20 @@ int32_t app_udp_handler(uint8_t *packet)
 
 			/* toggle RELAY_2 */
 			if (val){
-				GPIO_ToggleBits(GPIOC, GPIO_Pin_13); // CHANGE TO RELAY_2 PIN
+				if (TEMP_MIN != -1 && TEMP_MAX != -1){
+					if (temp >= TEMP_MIN && temp <= TEMP_MAX){
+						GPIO_ToggleBits(GPIOA, GPIO_Pin_1); // PA1
+					}
+					else {
+						GPIO_ResetBits(GPIOA, GPIO_Pin_1);  // PA1
+					}
+				}
 			}
-			else {
-				GPIO_ResetBits(GPIOC, GPIO_Pin_13); // CHANGE TO RELAY_2 PIN
+			else{
+				GPIO_ResetBits(GPIOA, GPIO_Pin_1);			// PA1
 			}
+			
+			
 		}
 		if (strstr(datain, CONTROLE_DIME)){
 			/* skip topic name */
@@ -104,9 +122,23 @@ int32_t app_udp_handler(uint8_t *packet)
 
 			val = atoi(dataval);
 
-			/* toggle RELAY_1 */
-
-			// IMPLEMENTAR PWM
+			/* toggle DIME */
+			if (val){
+				if (LUX_MIN != -1 && LUX_MAX != -1){
+					if (lux < LUX_MIN){
+						TIM4->CCR4 = 999; 		// PB9						
+					}
+					else if (lux > LUX_MAX){
+						TIM4->CCR4 = 0;			// PB9
+					}
+					else{
+						TIM4->CCR4 = (int)(999 * (1 - (lux / LUX_MAX)));
+					}
+				}	
+			}
+			else {
+				TIM4->CCR4 = 0;
+			}
 		}
 		if (strstr(datain, LIMITES_DIME)){
 			/* Skip topic name */
@@ -232,28 +264,59 @@ float luminosity()
 
 float task_temp(void)
 {	
-	adc_channel(ADC_Channel_8);
+	adc_channel(ADC_Channel_8); // PB0
 	temp = temperature();
 	
+	return temp;
+}
+
+float task_temp_dht(void)
+{	
+	int val;
+	
+	val = dht_read(&dht_11);
+	
+	if (val != ERR_OK)
+		printf("Sensor DHT_11 error: %d\n", val);
+	else {
+		/* printf("DHT_11: %d %d %d %d\n", dht_11.data[0],
+		dht_11.data[1], dht_11.data[2], dht_11.data[3]); */
+		/* printf("DHT_11: temp %d.%dC, humidity: %d.%d\n",
+		dht_11.temperature / 10, dht_11.temperature % 10,
+		dht_11.humidity / 10, dht_11.humidity % 10); */
+		temp = dht_11.temperature;
+	}
+		
 	return temp;
 }
 
 float task_lux(void)
 {
 		
-	adc_channel(ADC_Channel_9);
+	adc_channel(ADC_Channel_9); // PB1
 	lux = luminosity();
 	
 	return lux;
 }
 
-float task_umid(void)
+float task_humid_dht(void)
 {
-		
-	adc_channel(ADC_Channel_10); // TROCAR CANAL
-	umid = luminosity(); // TROCAR COMO OBTER O VALOR
+	int val;
 	
-	return umid;
+	val = dht_read(&dht_11);
+	
+	if (val != ERR_OK)
+		printf("Sensor DHT_11 error: %d\n", val);
+	else {
+		/* printf("DHT_11: %d %d %d %d\n", dht_11.data[0],
+		dht_11.data[1], dht_11.data[2], dht_11.data[3]); */
+		/* printf("DHT_11: temp %d.%dC, humidity: %d.%d\n",
+		dht_11.temperature / 10, dht_11.temperature % 10,
+		dht_11.humidity / 10, dht_11.humidity % 10); */
+		humid = dht_11.humidity;
+	}
+		
+	return humid;
 }
 
 
@@ -283,13 +346,13 @@ void *sensor_task(void *)
 	uint8_t *packet = eth_frame + sizeof(struct eth_s);
 	
 	if (sensor_poll_data()) {
-		temp  = task_temp();
-		lux   = task_lux();
-		umid  = task_umid();
+		temp   = task_temp(); // task_temp_dht()
+		lux    = task_lux();
+		humid  = task_humid_dht();
 
 		sensor_data(packet, SENSOR_TEMP, temp);
 		sensor_data(packet, SENSOR_LUMI, lux);
-		sensor_data(packet, SENSOR_UMID, umid);
+		sensor_data(packet, SENSOR_HUMID, humid);
 	}
 	
 	return 0;
@@ -305,6 +368,7 @@ int main(void)
 	analog_config();
 	adc_config();
 	pwm_config();
+	dht_setup(&dht_11, DHT11, RCC_AHB1Periph_GPIOA, GPIOA, GPIO_Pin_7); // PA7
 	
 	/* setup LED */
 	led_init();
@@ -326,7 +390,7 @@ int main(void)
 	/* create MQTT topics */
 	setup_topic(packet, SENSOR_TEMP);
 	setup_topic(packet, SENSOR_LUMI);
-	setup_topic(packet, SENSOR_UMID);
+	setup_topic(packet, SENSOR_HUMID);
 	setup_topic(packet, CONTROLE_DIME);
 	setup_topic(packet, RELAY_1);
 	setup_topic(packet, RELAY_2);
