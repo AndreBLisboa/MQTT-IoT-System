@@ -20,7 +20,8 @@ uint8_t mynm[4];
 uint8_t mygw[4];
 
 int LUX_MIN = -1, LUX_MAX = -1;
-int TEMP_MIN = -1, TEMP_MAX = -1;
+int TEMP_MIN_RELAY_1 = -1, TEMP_MAX_RELAY_1 = -1;
+int TEMP_MIN_RELAY_2 = -1, TEMP_MAX_RELAY_2 = -1;
 
 const float F_VOLTAGE = 635.0;		// 590 ~ 700mV typical diode forward voltage
 const float T_COEFF = -2.0;			// 1.8 ~ 2.2mV change per degree Celsius
@@ -40,7 +41,8 @@ struct dht_s dht_11;
 #define RELAY_1			"testtopic/andrelucas/relay_1"
 #define RELAY_2			"testtopic/andrelucas/relay_2"
 #define LIMITES_DIME	"testtopic/andrelucas/limites_dime"
-#define LIMITES_RELAYS	"testtopic/andrelucas/limites_relays"
+#define LIMITES_RELAY_1	"testtopic/andrelucas/limites_relay_1"
+#define LIMITES_RELAY_2	"testtopic/andrelucas/limites_relay_2"
 
 /* this function is called asynchronously (on MQTT messages) */
 int32_t app_udp_handler(uint8_t *packet)
@@ -71,18 +73,13 @@ int32_t app_udp_handler(uint8_t *packet)
 			val = atoi(dataval);
 
 			/* toggle RELAY_1 */
-			if (val){
-				if (TEMP_MIN != -1 && TEMP_MAX != -1){
-					if (temp >= TEMP_MIN && temp <= TEMP_MAX){
-						GPIO_ToggleBits(GPIOA, GPIO_Pin_0); // PA0
-					}
-					else {
-						GPIO_ResetBits(GPIOA, GPIO_Pin_0);  // PA0
-					}
+			if (TEMP_MIN_RELAY_1 == -1 && TEMP_MAX_RELAY_1 == -1){
+				if (val){
+					GPIO_SetBits(GPIOA, GPIO_Pin_0); // PA0
 				}
-			}
-			else{
-				GPIO_ResetBits(GPIOA, GPIO_Pin_0);			// PA0
+				else {
+					GPIO_ResetBits(GPIOA, GPIO_Pin_0);  // PA0
+				}
 			}
 		}
 		if (strstr(datain, RELAY_2)){
@@ -96,21 +93,14 @@ int32_t app_udp_handler(uint8_t *packet)
 			val = atoi(dataval);
 
 			/* toggle RELAY_2 */
-			if (val){
-				if (TEMP_MIN != -1 && TEMP_MAX != -1){
-					if (temp >= TEMP_MIN && temp <= TEMP_MAX){
-						GPIO_ToggleBits(GPIOA, GPIO_Pin_1); // PA1
-					}
-					else {
-						GPIO_ResetBits(GPIOA, GPIO_Pin_1);  // PA1
-					}
+			if (TEMP_MIN_RELAY_2 == -1 && TEMP_MAX_RELAY_2 == -1){
+				if (val){
+					GPIO_SetBits(GPIOA, GPIO_Pin_1); // PA1
 				}
-			}
-			else{
-				GPIO_ResetBits(GPIOA, GPIO_Pin_1);			// PA1
-			}
-			
-			
+				else {
+					GPIO_ResetBits(GPIOA, GPIO_Pin_1);  // PA1
+				}
+			}			
 		}
 		if (strstr(datain, CONTROLE_DIME)){
 			/* skip topic name */
@@ -123,21 +113,13 @@ int32_t app_udp_handler(uint8_t *packet)
 			val = atoi(dataval);
 
 			/* toggle DIME */
-			if (val){
-				if (LUX_MIN != -1 && LUX_MAX != -1){
-					if (lux < LUX_MIN){
-						TIM4->CCR4 = 999; 		// PB9						
-					}
-					else if (lux > LUX_MAX){
-						TIM4->CCR4 = 0;			// PB9
-					}
-					else{
-						TIM4->CCR4 = (int)(999 * (1 - (lux / LUX_MAX)));
-					}
+			if (LUX_MIN == -1 && LUX_MAX == -1){
+				if (val){
+					TIM4->CCR4 = val; 		// PB9						
+				}
+				else{
+					TIM4->CCR4 = 0; 		// PB9	
 				}	
-			}
-			else {
-				TIM4->CCR4 = 0;
 			}
 		}
 		if (strstr(datain, LIMITES_DIME)){
@@ -161,14 +143,16 @@ int32_t app_udp_handler(uint8_t *packet)
 			/* Update LUX_MIN and LUX_MAX */
 			LUX_MIN = val_min;
 			LUX_MAX = val_max;
+
+			task_dime();
 		}
-		if (strstr(datain, LIMITES_RELAYS)){
+		if (strstr(datain, LIMITES_RELAY_1)){
 			/* Skip topic name */
 			dataval = strstr(datain, " ") + 1;
 			int val_min = -1, val_max = -1;
 
 			/* Print received data and its origin */
-			sprintf(data, "LIMITES_RELAYS: [%s]", dataval);
+			sprintf(data, "LIMITES_RELAY_1: [%s]", dataval);
 
 			/* Split the dataval string */
 			char *char_ptr = strtok(dataval, ";");
@@ -180,9 +164,35 @@ int32_t app_udp_handler(uint8_t *packet)
 				}
 			}
 
-			/* Update TEMP_MIN and TEMP_MAX */
-			TEMP_MIN = val_min;
-			TEMP_MAX = val_max;
+			/* Update TEMP_MIN_RELAY_1 and TEMP_MAX_RELAY_1 */
+			TEMP_MIN_RELAY_1 = val_min;
+			TEMP_MAX_RELAY_1 = val_max;
+
+			task_relay_1();
+		}
+		if (strstr(datain, LIMITES_RELAY_2)){
+			/* Skip topic name */
+			dataval = strstr(datain, " ") + 1;
+			int val_min = -1, val_max = -1;
+
+			/* Print received data and its origin */
+			sprintf(data, "LIMITES_RELAY_2: [%s]", dataval);
+
+			/* Split the dataval string */
+			char *char_ptr = strtok(dataval, ";");
+			if (char_ptr != NULL) {
+				val_min = atoi(char_ptr);
+				char_ptr = strtok(NULL, ";");
+				if (char_ptr != NULL) {
+					val_max = atoi(char_ptr);
+				}
+			}
+
+			/* Update TEMP_MIN_RELAY_2 and TEMP_MAX_RELAY_2 */
+			TEMP_MIN_RELAY_2 = val_min;
+			TEMP_MAX_RELAY_2 = val_max;
+
+			task_relay_2();
 		}
 	}
 	
@@ -319,6 +329,51 @@ float task_humid_dht(void)
 	return humid;
 }
 
+void *task_relay_1(void *)
+{
+	if (TEMP_MIN_RELAY_1 != -1 && TEMP_MAX_RELAY_1 != -1){
+		if (temp >= TEMP_MIN_RELAY_1 && temp <= TEMP_MAX_RELAY_1){
+			GPIO_SetBits(GPIOA, GPIO_Pin_0); // PA0
+		}
+		else {
+			GPIO_ResetBits(GPIOA, GPIO_Pin_0);  // PA0
+		}
+	}
+
+	return 0;
+}
+
+void *task_relay_2(void *)
+{
+	if (TEMP_MIN_RELAY_2 != -1 && TEMP_MAX_RELAY_2 != -1){
+		if (temp >= TEMP_MAX_RELAY_2 && temp <= TEMP_MAX_RELAY_2){
+			GPIO_SetBits(GPIOA, GPIO_Pin_1); // PA1
+		}
+		else {
+			GPIO_ResetBits(GPIOA, GPIO_Pin_1);  // PA1
+		}
+	}
+
+	return 0;
+}
+
+void *task_dime(void *)
+{
+	if (LUX_MIN != -1 && LUX_MAX != -1){
+		if (lux < LUX_MIN){
+			TIM4->CCR4 = 999; 		// PB9						
+		}
+		else if (lux > LUX_MAX){
+			TIM4->CCR4 = 0;			// PB9
+		}
+		else{
+			TIM4->CCR4 = (int)(999 * (1 - (lux / LUX_MAX)));
+		}
+	}	
+
+	return 0;
+}
+
 
 /* application tasks */
 void *network_task(void *)
@@ -395,12 +450,16 @@ int main(void)
 	setup_topic(packet, RELAY_1);
 	setup_topic(packet, RELAY_2);
 	setup_topic(packet, LIMITES_DIME);
-	setup_topic(packet, LIMITES_RELAYS);
+	setup_topic(packet, LIMITES_RELAY_1);
+	setup_topic(packet, LIMITES_RELAY_2);
 	
 	/* setup CoOS and tasks */
 	task_pinit(ptasks);
 	task_add(ptasks, network_task, 50);
 	task_add(ptasks, sensor_task, 100);
+	task_add(ptasks, task_relay_1, 100);
+	task_add(ptasks, task_relay_2, 100);
+	task_add(ptasks, task_dime, 100);
 	
 	while (1) {
 		task_schedule(ptasks);
