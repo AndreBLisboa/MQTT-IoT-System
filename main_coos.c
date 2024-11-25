@@ -401,7 +401,7 @@ void *sensor_task(void *)
 	uint8_t *packet = eth_frame + sizeof(struct eth_s);
 	
 	if (sensor_poll_data()) {
-		temp   = task_temp(); // task_temp_dht()
+		temp   = task_temp_dht(); // task_temp()
 		lux    = task_lux();
 		humid  = task_humid_dht();
 
