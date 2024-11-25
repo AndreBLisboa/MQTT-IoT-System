@@ -19,8 +19,8 @@ uint8_t myip[4];
 uint8_t mynm[4];
 uint8_t mygw[4];
 
-uint8_t LUX_MIN = 0, LUX_MAX = 1000;
-uint8_t TEMP_MIN = 0, TEMP_MAX = 100;
+int LUX_MIN = -1, LUX_MAX = -1;
+int TEMP_MIN = -1, TEMP_MAX = -1;
 
 const float F_VOLTAGE = 635.0;		// 590 ~ 700mV typical diode forward voltage
 const float T_COEFF = -2.0;			// 1.8 ~ 2.2mV change per degree Celsius
