@@ -143,8 +143,6 @@ int32_t app_udp_handler(uint8_t *packet)
 			/* Update LUX_MIN and LUX_MAX */
 			LUX_MIN = val_min;
 			LUX_MAX = val_max;
-
-			task_dime();
 		}
 		if (strstr(datain, LIMITES_RELAY_1)){
 			/* Skip topic name */
@@ -167,8 +165,6 @@ int32_t app_udp_handler(uint8_t *packet)
 			/* Update TEMP_MIN_RELAY_1 and TEMP_MAX_RELAY_1 */
 			TEMP_MIN_RELAY_1 = val_min;
 			TEMP_MAX_RELAY_1 = val_max;
-
-			task_relay_1();
 		}
 		if (strstr(datain, LIMITES_RELAY_2)){
 			/* Skip topic name */
@@ -191,8 +187,6 @@ int32_t app_udp_handler(uint8_t *packet)
 			/* Update TEMP_MIN_RELAY_2 and TEMP_MAX_RELAY_2 */
 			TEMP_MIN_RELAY_2 = val_min;
 			TEMP_MAX_RELAY_2 = val_max;
-
-			task_relay_2();
 		}
 	}
 	
@@ -286,7 +280,7 @@ float task_temp_dht(void)
 	
 	val = dht_read(&dht_11);
 	
-	if (val != ERR_OK)
+	if (val != ERR_ERROR)
 		printf("Sensor DHT_11 error: %d\n", val);
 	else {
 		/* printf("DHT_11: %d %d %d %d\n", dht_11.data[0],
@@ -315,7 +309,7 @@ float task_humid_dht(void)
 	
 	val = dht_read(&dht_11);
 	
-	if (val != ERR_OK)
+	if (val != ERR_ERROR)
 		printf("Sensor DHT_11 error: %d\n", val);
 	else {
 		/* printf("DHT_11: %d %d %d %d\n", dht_11.data[0],
@@ -329,7 +323,7 @@ float task_humid_dht(void)
 	return humid;
 }
 
-void *task_relay_1(void *)
+void *task_relay_1()
 {
 	if (TEMP_MIN_RELAY_1 != -1 && TEMP_MAX_RELAY_1 != -1){
 		if (temp >= TEMP_MIN_RELAY_1 && temp <= TEMP_MAX_RELAY_1){
@@ -343,7 +337,7 @@ void *task_relay_1(void *)
 	return 0;
 }
 
-void *task_relay_2(void *)
+void *task_relay_2()
 {
 	if (TEMP_MIN_RELAY_2 != -1 && TEMP_MAX_RELAY_2 != -1){
 		if (temp >= TEMP_MAX_RELAY_2 && temp <= TEMP_MAX_RELAY_2){
@@ -357,7 +351,7 @@ void *task_relay_2(void *)
 	return 0;
 }
 
-void *task_dime(void *)
+void *task_dime()
 {
 	if (LUX_MIN != -1 && LUX_MAX != -1){
 		if (lux < LUX_MIN){
