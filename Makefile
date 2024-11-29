@@ -120,19 +120,23 @@ USTACK_IP_SRC = \
 	$(USTACK_DIR)/udp.c
 
 HAL_SRC = \
+	$(HAL_DIR)/adc.c \
 	$(HAL_DIR)/setjmp.s \
 	$(HAL_DIR)/aeabi.s \
 	$(HAL_DIR)/muldiv.c \
 	$(HAL_DIR)/stm32f4_vector.c \
 	$(HAL_DIR)/usart.c \
 	$(HAL_DIR)/libc.c \
-	$(HAL_DIR)/ieee754.c
+	$(HAL_DIR)/ieee754.c \
+	$(HAL_DIR)/pwm.c
 
 COOS_SRC = \
 	$(COOS_DIR)/coos.c
 	
 APPCOOS_SRC = \
-	$(APP_DIR)/main_coos.c
+	$(APP_DIR)/main_coos.c \
+	$(APP_DIR)/dht.c \
+	$(APP_DIR)/hw_res.c
 	
 APP_SRC = \
 	$(APP_DIR)/main.c
@@ -165,7 +169,7 @@ app:
 	$(CC) $(CFLAGS) $(AFLAGS) $(APP_SRC)
 
 app_coos:
-	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/hal.c
+	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/dht.c
 	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/hw_res.c
 	$(CC) $(CFLAGS) $(AFLAGS) $(APPCOOS_SRC)
 
@@ -216,8 +220,7 @@ sim:
 	qemu-system-gnuarmeclipse -cpu cortex-m4 -machine STM32F4-Discovery -s --verbose --verbose -serial mon:stdio -kernel firmware.bin
 
 clean:
-	rm -rf *.o *~ firmware.*
+	rm -rf .o *~ firmware.
 
 veryclean: clean
-	rm -f tuntap_if_host
-
+	rm -f tuntap_if_host
