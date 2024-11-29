@@ -242,28 +242,28 @@ void net_setup(uint8_t *packet)
 
 float temperature()
 {
-	float temp = 0.0;
+	float temp_internal = 0.0;
 	float voltage;
 	
 	for (int i = 0; i < ADC_SAMPLES; i++) {
 		voltage = adc_read() * (V_RAIL / ADC_MAX);
-		temp += ((voltage - F_VOLTAGE) / T_COEFF);
+		temp_internal += ((voltage - F_VOLTAGE) / T_COEFF);
 	}
 	
-	return (temp / ADC_SAMPLES);
+	return (temp_internal / ADC_SAMPLES);
 }
 
 float luminosity()
 {
-	float voltage, lux = 0.0, rldr;
+	float voltage, lux_internal = 0.0, rldr;
 	
 	for (int i = 0; i < ADC_SAMPLES; i++) {
 		voltage = adc_read() * (V_RAIL / ADC_MAX);
 		rldr = (REF_RESISTANCE * (V_RAIL - voltage)) / voltage;
-		lux += 500 / (rldr / 650);
+		lux_internal += 500 / (rldr / 650);
 	}
 	
-	return (lux / ADC_SAMPLES);
+	return (lux_internal / ADC_SAMPLES);
 }
 
 float task_temp(void)
