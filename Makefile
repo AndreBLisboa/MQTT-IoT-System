@@ -120,15 +120,13 @@ USTACK_IP_SRC = \
 	$(USTACK_DIR)/udp.c
 
 HAL_SRC = \
-	$(HAL_DIR)/adc.c \
 	$(HAL_DIR)/setjmp.s \
 	$(HAL_DIR)/aeabi.s \
 	$(HAL_DIR)/muldiv.c \
 	$(HAL_DIR)/stm32f4_vector.c \
 	$(HAL_DIR)/usart.c \
 	$(HAL_DIR)/libc.c \
-	$(HAL_DIR)/ieee754.c \
-	$(HAL_DIR)/pwm.c
+	$(HAL_DIR)/ieee754.c
 
 COOS_SRC = \
 	$(COOS_DIR)/coos.c
@@ -136,6 +134,8 @@ COOS_SRC = \
 APPCOOS_SRC = \
 	$(APP_DIR)/main_coos.c \
 	$(APP_DIR)/dht.c \
+	$(APP_DIR)/adc.c \
+	$(APP_DIR)/pwm.c \
 	$(APP_DIR)/hw_res.c
 	
 APP_SRC = \
@@ -171,6 +171,8 @@ app:
 app_coos:
 	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/dht.c
 	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/hw_res.c
+	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/adc.c
+	$(CC) $(CFLAGS) $(AFLAGS) $(APP_DIR)/pwm.c
 	$(CC) $(CFLAGS) $(AFLAGS) $(APPCOOS_SRC)
 
 link:
